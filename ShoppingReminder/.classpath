@@ -8,8 +8,6 @@
 	<classpathentry kind="lib" path="libs/google-api-client-android-1.14.1-beta.jar"/>
 	<classpathentry kind="lib" path="libs/google-http-client-android-1.14.1-beta.jar"/>
 	<classpathentry kind="lib" path="libs/google-http-client-gson-1.14.1-beta.jar"/>
-	<classpathentry kind="lib" path="libs/google-http-client-jackson-1.14.1-beta.jar"/>
-	<classpathentry kind="lib" path="libs/google-http-client-jackson2-1.14.1-beta.jar"/>
 	<classpathentry kind="lib" path="libs/google-http-client-protobuf-1.14.1-beta.jar"/>
 	<classpathentry kind="lib" path="libs/google-oauth-client-1.14.1-beta.jar"/>
 	<classpathentry kind="lib" path="libs/gson-2.1.jar"/>
@@ -20,5 +18,9 @@
 	<classpathentry kind="lib" path="libs/gdata-spreadsheet-3.0.jar"/>
 	<classpathentry kind="lib" path="libs/gdata-spreadsheet-meta-3.0.jar"/>
 	<classpathentry kind="lib" path="libs/gdata-core-1.0.jar"/>
+	<classpathentry kind="lib" path="libs/google-http-client-jackson-1.14.1-beta.jar"/>
+	<classpathentry kind="lib" path="libs/google-http-client-jackson2-1.14.1-beta.jar"/>
+	<classpathentry kind="lib" path="libs/guava-14.0.1.jar"/>
+	<classpathentry exported="true" kind="con" path="com.android.ide.eclipse.adt.LIBRARIES"/>
 	<classpathentry kind="output" path="bin/classes"/>
 </classpath>

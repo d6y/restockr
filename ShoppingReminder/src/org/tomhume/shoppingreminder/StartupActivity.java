@@ -5,11 +5,11 @@ import java.net.URL;
 import java.util.List;
 
 import com.google.gdata.client.spreadsheet.SpreadsheetService;
-import com.google.gdata.data.Feed;
 import com.google.gdata.data.spreadsheet.SpreadsheetEntry;
 import com.google.gdata.data.spreadsheet.SpreadsheetFeed;
 import com.google.gdata.util.ServiceException;
 
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.accounts.Account;
 import android.accounts.AccountManager;
@@ -17,9 +17,7 @@ import android.accounts.AccountManagerFuture;
 import android.accounts.AuthenticatorException;
 import android.accounts.OperationCanceledException;
 import android.app.Activity;
-import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.util.Log;
 import android.view.Menu;
 import android.view.View;
@@ -49,37 +47,8 @@ public class StartupActivity extends Activity {
 		button_append.setOnClickListener(new View.OnClickListener() {
 	        public void onClick(View view) {                 
 	        	
-	        	AccountManager amgr = AccountManager.get(getApplicationContext());
-	        	Account gmail = getGMailAccount(amgr.getAccounts());
-	        	if (gmail!=null) {
-	        		AccountManagerFuture<Bundle> amf = amgr.getAuthToken(gmail, "wise", null, thisActivity, null, null);
-					try {
-						Bundle authTokenBundle = amf.getResult();
-						String authToken = authTokenBundle.getString(AccountManager.KEY_AUTHTOKEN);
-		        		Log.d(TAG, "authToken="+authToken);
-		        		
-		        		SpreadsheetService ss = new SpreadsheetService("Spreadsheet");
-		        	    ss.setProtocolVersion(SpreadsheetService.Versions.V3);
-		        	    ss.setAuthSubToken(authToken);
-		        	    URL metafeedUrl = new URL("https://spreadsheets.google.com/feeds/spreadsheets/private/full");
-		        	    SpreadsheetFeed feed = ss.getFeed(metafeedUrl, SpreadsheetFeed.class);
+	        	new AddSpreadsheetTask().execute(thisActivity);
 
-		        	    List<SpreadsheetEntry> spreadsheets = feed.getEntries();
-		        	    for (SpreadsheetEntry sheet: spreadsheets) {
-		        	    	Log.d(TAG, "ssheet="+sheet.getTitle().getPlainText());
-		        	    }
-		        		
-					} catch (OperationCanceledException e) {
-						e.printStackTrace();
-					} catch (AuthenticatorException e) {
-						e.printStackTrace();
-					} catch (IOException e) {
-						e.printStackTrace();
-					} catch (ServiceException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-	        	}
 	        }
 	    });
 		
@@ -112,4 +81,55 @@ public class StartupActivity extends Activity {
 		return true;
 	}
 
+	
+	private class AddSpreadsheetTask extends AsyncTask<Activity, Integer, Long> {
+	     protected Long doInBackground(Activity... acts) {
+
+	        	AccountManager amgr = AccountManager.get(getApplicationContext());
+	        	Account gmail = getGMailAccount(amgr.getAccounts());
+	        	if (gmail!=null) {
+	        		AccountManagerFuture<Bundle> amf = amgr.getAuthToken(gmail, "wise", null, acts[0], null, null);
+					try {
+						Bundle authTokenBundle = amf.getResult();
+						String authToken = authTokenBundle.getString(AccountManager.KEY_AUTHTOKEN);
+		        		Log.d(TAG, "authToken="+authToken);
+		        		
+		        		
+		        		SpreadsheetService ss = new SpreadsheetService("Spreadsheet");
+		        	    ss.setProtocolVersion(SpreadsheetService.Versions.V3);
+		        	    ss.setHeader("Authorization", "GoogleLogin auth=" + authToken);
+		        	    		        	    
+		        	    
+		        	    URL metafeedUrl = new URL("https://spreadsheets.google.com/feeds/spreadsheets/private/full");
+		        	    SpreadsheetFeed feed = ss.getFeed(metafeedUrl, SpreadsheetFeed.class);
+
+		        	    List<SpreadsheetEntry> spreadsheets = feed.getEntries();
+		        	    for (SpreadsheetEntry sheet: spreadsheets) {
+		        	    	Log.d(TAG, "ssheet="+sheet.getTitle().getPlainText());
+		        	    }
+		        		
+					} catch (OperationCanceledException e) {
+						e.printStackTrace();
+					} catch (AuthenticatorException e) {
+						e.printStackTrace();
+					} catch (IOException e) {
+						e.printStackTrace();
+					} catch (ServiceException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+	        	}
+	    	 
+	         return 0L;
+	     }
+
+	     protected void onProgressUpdate(Integer... progress) {
+	    	 Log.d(TAG, "onProgressUpdate " + progress[0]);
+	     }
+
+	     protected void onPostExecute(Long result) {
+	    	 Log.d(TAG, "onPostExecute " + result);
+	     }
+	 }
+	
 }
