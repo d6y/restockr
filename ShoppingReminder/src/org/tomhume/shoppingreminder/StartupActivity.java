@@ -2,6 +2,7 @@ package org.tomhume.shoppingreminder;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.List;
 
@@ -15,6 +16,9 @@ import com.google.gdata.data.spreadsheet.Worksheet;
 import com.google.gdata.data.spreadsheet.WorksheetEntry;
 import com.google.gdata.util.ServiceException;
 
+import android.media.Ringtone;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.accounts.Account;
@@ -28,11 +32,11 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Toast;
 
 public class StartupActivity extends Activity {
 	
 	private static final String TAG = "StartupActivity";
-	private static final String PREF_ACCOUNT_NAME = "accountName";
 	 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -42,24 +46,18 @@ public class StartupActivity extends Activity {
 		final Button button_getstarted = (Button) findViewById(R.id.button_start); 
 		button_getstarted.setOnClickListener(new View.OnClickListener() {
 	        public void onClick(View view) {                 
-	        	Intent intent = new Intent("com.google.zxing.client.android.SCAN");
-	            startActivityForResult(intent, 0);
-	        }
-	    });
-
-		final Activity thisActivity = this;
-		
-		final Button button_append = (Button) findViewById(R.id.button_append);
-		button_append.setOnClickListener(new View.OnClickListener() {
-	        public void onClick(View view) {                 
-	        	
-	        	new AddSpreadsheetTask().execute(thisActivity);
-
+	        	triggerLookup();
 	        }
 	    });
 		
+		triggerLookup();
+
 	}
 	
+	private void triggerLookup() {
+    	Intent intent = new Intent("com.google.zxing.client.android.SCAN");
+        startActivityForResult(intent, 0);
+	}
 
 
 	public void onActivityResult(int requestCode, int resultCode, Intent intent) {
@@ -68,10 +66,15 @@ public class StartupActivity extends Activity {
 	            String contents = intent.getStringExtra("SCAN_RESULT");
 	            String format = intent.getStringExtra("SCAN_RESULT_FORMAT");
 	            Log.i(TAG, "format="+format+",contents="+contents);
+	            
+	        	new ResolverTask().execute(new EANDataResolver(contents));
+
 	            // Handle successful scan
+	        	
 	        } else if (resultCode == RESULT_CANCELED) {
 	            // Handle cancel
 	        }
+	        triggerLookup();
 	    }
 	}
 	
@@ -100,13 +103,33 @@ public class StartupActivity extends Activity {
 	    return null;
 	}
 	
-	private class AddSpreadsheetTask extends AsyncTask<Activity, Integer, Long> {
-	     protected Long doInBackground(Activity... acts) {
+	private class ResolverTask extends AsyncTask<EANDataResolver, Integer, Long> {
+		
+		protected Long doInBackground(EANDataResolver... data) {
+        	try {
+        		EANDataResolver edr = data[0];
+	        	edr.resolve();
+	        	Log.d(TAG, "Product="+edr.getItemName());
+	        	
+	        	if ((edr.getItemName()!=null) && (!edr.getItemName().equals(""))) {
+	        		new AddSpreadsheetTask().execute(new ShoppingItem(edr.getItemCode(),edr.getItemName()));
+	        	}
+        	} catch (IOException e) {
+        		e.printStackTrace();
+        	} catch (URISyntaxException e) {
+				e.printStackTrace();
+			}
+        	return 0L;
+		}
+	}
+	
+	private class AddSpreadsheetTask extends AsyncTask<ShoppingItem, Integer, Long> {
+	     protected Long doInBackground(ShoppingItem... items) {
 
 	        	AccountManager amgr = AccountManager.get(getApplicationContext());
 	        	Account gmail = getGMailAccount(amgr.getAccounts());
 	        	if (gmail!=null) {
-	        		AccountManagerFuture<Bundle> amf = amgr.getAuthToken(gmail, "wise", null, acts[0], null, null);
+	        		AccountManagerFuture<Bundle> amf = amgr.getAuthToken(gmail, "wise", null, null, null, null);
 					try {
 						
 						Bundle authTokenBundle = amf.getResult();
@@ -125,11 +148,19 @@ public class StartupActivity extends Activity {
 
 		        	    // Create a local representation of the new row.
 		        	    ListEntry row = new ListEntry();
-		        	    row.getCustomElements().setValueLocal("item", "Joe");
+		        	    row.getCustomElements().setValueLocal("code", items[0].getItemCode());
+		        	    row.getCustomElements().setValueLocal("name", items[0].getItemName());
 		        	    // Send the new row to the API for insertion.
 		        	    row = ss.insert(listFeedUrl, row);
 		        	    
 		        	    Log.d(TAG, "wrote row");
+		        	    
+			        	try {
+			                Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+			                Ringtone r = RingtoneManager.getRingtone(getApplicationContext(), notification);
+			                r.play();
+			            } catch (Exception e) {}
+			        	
 		        		
 					} catch (OperationCanceledException e) {
 						e.printStackTrace();
@@ -146,13 +177,6 @@ public class StartupActivity extends Activity {
 	         return 0L;
 	     }
 
-	     protected void onProgressUpdate(Integer... progress) {
-	    	 Log.d(TAG, "onProgressUpdate " + progress[0]);
-	     }
-
-	     protected void onPostExecute(Long result) {
-	    	 Log.d(TAG, "onPostExecute " + result);
-	     }
 	 }
 	
 }
