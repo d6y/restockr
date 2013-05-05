@@ -1,6 +1,14 @@
 package org.tomhume.shoppingreminder;
 
 import java.io.IOException;
+import java.net.URL;
+import java.util.List;
+
+import com.google.gdata.client.spreadsheet.SpreadsheetService;
+import com.google.gdata.data.Feed;
+import com.google.gdata.data.spreadsheet.SpreadsheetEntry;
+import com.google.gdata.data.spreadsheet.SpreadsheetFeed;
+import com.google.gdata.util.ServiceException;
 
 import android.os.Bundle;
 import android.accounts.Account;
@@ -9,7 +17,9 @@ import android.accounts.AccountManagerFuture;
 import android.accounts.AuthenticatorException;
 import android.accounts.OperationCanceledException;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.util.Log;
 import android.view.Menu;
 import android.view.View;
@@ -18,15 +28,14 @@ import android.widget.Button;
 public class StartupActivity extends Activity {
 	
 	private static final String TAG = "StartupActivity";
-
+	private static final String PREF_ACCOUNT_NAME = "accountName";
+	 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_startup);
 
 		final Button button_getstarted = (Button) findViewById(R.id.button_start); 
-		Log.d(TAG, "Button="+button_getstarted);
-		
 		button_getstarted.setOnClickListener(new View.OnClickListener() {
 	        public void onClick(View view) {                 
 	        	Intent intent = new Intent("com.google.zxing.client.android.SCAN");
@@ -48,11 +57,26 @@ public class StartupActivity extends Activity {
 						Bundle authTokenBundle = amf.getResult();
 						String authToken = authTokenBundle.getString(AccountManager.KEY_AUTHTOKEN);
 		        		Log.d(TAG, "authToken="+authToken);
+		        		
+		        		SpreadsheetService ss = new SpreadsheetService("Spreadsheet");
+		        	    ss.setProtocolVersion(SpreadsheetService.Versions.V3);
+		        	    ss.setAuthSubToken(authToken);
+		        	    URL metafeedUrl = new URL("https://spreadsheets.google.com/feeds/spreadsheets/private/full");
+		        	    SpreadsheetFeed feed = ss.getFeed(metafeedUrl, SpreadsheetFeed.class);
+
+		        	    List<SpreadsheetEntry> spreadsheets = feed.getEntries();
+		        	    for (SpreadsheetEntry sheet: spreadsheets) {
+		        	    	Log.d(TAG, "ssheet="+sheet.getTitle().getPlainText());
+		        	    }
+		        		
 					} catch (OperationCanceledException e) {
 						e.printStackTrace();
 					} catch (AuthenticatorException e) {
 						e.printStackTrace();
 					} catch (IOException e) {
+						e.printStackTrace();
+					} catch (ServiceException e) {
+						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
 	        	}
