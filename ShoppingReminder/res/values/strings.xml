@@ -5,5 +5,6 @@
     <string name="action_settings">Settings</string>
     <string name="hello_world">Hello world!</string>
     <string name="button_startup">Let\'s go!</string>
+    <string name="button_append">Append a row!</string>
 
 </resources>

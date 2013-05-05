@@ -1,6 +1,13 @@
 package org.tomhume.shoppingreminder;
 
+import java.io.IOException;
+
 import android.os.Bundle;
+import android.accounts.Account;
+import android.accounts.AccountManager;
+import android.accounts.AccountManagerFuture;
+import android.accounts.AuthenticatorException;
+import android.accounts.OperationCanceledException;
 import android.app.Activity;
 import android.content.Intent;
 import android.util.Log;
@@ -15,17 +22,50 @@ public class StartupActivity extends Activity {
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		
+		setContentView(R.layout.activity_startup);
+
 		final Button button_getstarted = (Button) findViewById(R.id.button_start); 
 		Log.d(TAG, "Button="+button_getstarted);
+		
 		button_getstarted.setOnClickListener(new View.OnClickListener() {
 	        public void onClick(View view) {                 
-//	        	Intent intent = new Intent("com.google.zxing.client.android.SCAN");
-//	            startActivityForResult(intent, 0);
+	        	Intent intent = new Intent("com.google.zxing.client.android.SCAN");
+	            startActivityForResult(intent, 0);
+	        }
+	    });
+
+		final Activity thisActivity = this;
+		
+		final Button button_append = (Button) findViewById(R.id.button_append);
+		button_append.setOnClickListener(new View.OnClickListener() {
+	        public void onClick(View view) {                 
+	        	
+	        	AccountManager amgr = AccountManager.get(getApplicationContext());
+	        	Account gmail = getGMailAccount(amgr.getAccounts());
+	        	if (gmail!=null) {
+	        		AccountManagerFuture<Bundle> amf = amgr.getAuthToken(gmail, "wise", null, thisActivity, null, null);
+					try {
+						Bundle authTokenBundle = amf.getResult();
+						String authToken = authTokenBundle.getString(AccountManager.KEY_AUTHTOKEN);
+		        		Log.d(TAG, "authToken="+authToken);
+					} catch (OperationCanceledException e) {
+						e.printStackTrace();
+					} catch (AuthenticatorException e) {
+						e.printStackTrace();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+	        	}
 	        }
 	    });
 		
-		setContentView(R.layout.activity_startup);
+	}
+	
+	private Account getGMailAccount(Account[] accounts) {
+		for (Account a: accounts) {
+			if (a.type.equals("com.google") && a.name.endsWith("gmail.com")) return a;
+		}
+		return null;
 	}
 
 	public void onActivityResult(int requestCode, int resultCode, Intent intent) {
