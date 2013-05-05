@@ -18,11 +18,14 @@ import org.apache.http.params.BasicHttpParams;
 import org.apache.http.params.HttpConnectionParams;
 import org.apache.http.params.HttpParams;
 
+import android.util.Log;
+
 import com.google.gson.Gson;
 
 public class EANDataResolver {
 
-	private static final String EANDATA_KEY = "EC10D38F51869348";
+	private static final String TAG = "EANDataResolver";
+	private static final String EANDATA_KEY = "7AD4C1255186A6B4";
 	
 	private String itemCode;
 	private String itemName;
@@ -42,12 +45,13 @@ public class EANDataResolver {
         HttpClient httpClient = new DefaultHttpClient(httpParameters);          
 
 		URI url = new URI("http://eandata.com/feed.php?keycode="+ EANDATA_KEY + "&mode=json&find=" + itemCode);
-       
+		Log.d(TAG, "Hitting " + url.toString());
 		HttpResponse response = httpClient.execute(new HttpGet(url));
         HttpEntity entity = response.getEntity();
         Reader reader = new InputStreamReader(entity.getContent());
         EANData data = g.fromJson(reader, EANData.class);
-        this.itemName = data.product.product;
+        if ((data!=null) && (data.product !=null)) this.itemName = data.product.product;
+        else Log.d(TAG, "couldn't find any product in data returned");
 	}
 	
 	class EANData {

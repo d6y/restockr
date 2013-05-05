@@ -21,6 +21,7 @@ import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
 import android.accounts.Account;
 import android.accounts.AccountManager;
 import android.accounts.AccountManagerFuture;
@@ -32,6 +33,8 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 public class StartupActivity extends Activity {
@@ -43,15 +46,15 @@ public class StartupActivity extends Activity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_startup);
 
-		final Button button_getstarted = (Button) findViewById(R.id.button_start); 
-		button_getstarted.setOnClickListener(new View.OnClickListener() {
-	        public void onClick(View view) {                 
-	        	triggerLookup();
+		final Button button_start = (Button) findViewById(R.id.button_start);
+		button_start.setVisibility(View.VISIBLE);
+		button_start.setOnClickListener(new View.OnClickListener() {
+			public void onClick(View v) 
+	        {   
+				triggerLookup();
 	        }
-	    });
-		
-		triggerLookup();
-
+		}); 
+	
 	}
 	
 	private void triggerLookup() {
@@ -67,6 +70,11 @@ public class StartupActivity extends Activity {
 	            String format = intent.getStringExtra("SCAN_RESULT_FORMAT");
 	            Log.i(TAG, "format="+format+",contents="+contents);
 	            
+	    		setContentView(R.layout.activity_startup);
+	            
+	    		ProgressBar p = (ProgressBar) findViewById(R.id.spinner);
+	    		p.setVisibility(View.VISIBLE);
+
 	        	new ResolverTask().execute(new EANDataResolver(contents));
 
 	            // Handle successful scan
@@ -74,7 +82,6 @@ public class StartupActivity extends Activity {
 	        } else if (resultCode == RESULT_CANCELED) {
 	            // Handle cancel
 	        }
-	        triggerLookup();
 	    }
 	}
 	
@@ -103,28 +110,70 @@ public class StartupActivity extends Activity {
 	    return null;
 	}
 	
-	private class ResolverTask extends AsyncTask<EANDataResolver, Integer, Long> {
+	public void setOperation(String s) {
+		TextView tv = (TextView) findViewById(R.id.label_current_op);
+		tv.setText(s);
+	}
+
+	public void setProduct(String s) {
+		TextView tv = (TextView) findViewById(R.id.label_product);
+		tv.setText(s);
+	}
+	
+	public void returnToBarcode() {
+		Handler h = new Handler();
+		h.postDelayed(new Runnable() {
+		    public void run() {
+				triggerLookup();
+		    }
+		}, 2000);
+	}
+
+	private class ResolverTask extends AsyncTask<EANDataResolver, Integer, EANDataResolver> {
 		
-		protected Long doInBackground(EANDataResolver... data) {
+		protected void onPreExecute() {
+			setOperation("Looking up product...");
+		}
+		
+		protected EANDataResolver doInBackground(EANDataResolver... data) {
+    		EANDataResolver edr = data[0];
+			
         	try {
-        		EANDataResolver edr = data[0];
 	        	edr.resolve();
 	        	Log.d(TAG, "Product="+edr.getItemName());
-	        	
-	        	if ((edr.getItemName()!=null) && (!edr.getItemName().equals(""))) {
-	        		new AddSpreadsheetTask().execute(new ShoppingItem(edr.getItemCode(),edr.getItemName()));
-	        	}
+	        	if ((edr.getItemName()!=null) && (!edr.getItemName().equals("")))  return edr;
         	} catch (IOException e) {
         		e.printStackTrace();
         	} catch (URISyntaxException e) {
 				e.printStackTrace();
 			}
-        	return 0L;
+    		return null;
 		}
+
+		@Override
+		protected void onPostExecute(EANDataResolver result) {
+			setOperation("");
+			if (result==null) {
+				setProduct("Couldn't find product");
+				returnToBarcode();
+			}
+			else {
+				setProduct(result.getItemName());
+				new AddSpreadsheetTask().execute(new ShoppingItem(result.getItemCode(),result.getItemName()));
+			}
+		}
+		
+		
 	}
 	
 	private class AddSpreadsheetTask extends AsyncTask<ShoppingItem, Integer, Long> {
-	     protected Long doInBackground(ShoppingItem... items) {
+
+		protected void onPreExecute() {
+			setOperation("Saving to shopping list");
+		}
+
+		
+		protected Long doInBackground(ShoppingItem... items) {
 
 	        	AccountManager amgr = AccountManager.get(getApplicationContext());
 	        	Account gmail = getGMailAccount(amgr.getAccounts());
@@ -159,8 +208,11 @@ public class StartupActivity extends Activity {
 			                Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
 			                Ringtone r = RingtoneManager.getRingtone(getApplicationContext(), notification);
 			                r.play();
-			            } catch (Exception e) {}
-			        	
+			                
+			            } catch (Exception e) {
+			            }
+			        	return 0L;
+
 		        		
 					} catch (OperationCanceledException e) {
 						e.printStackTrace();
@@ -173,9 +225,17 @@ public class StartupActivity extends Activity {
 						e.printStackTrace();
 					}
 	        	}
+            	return 1L;
 	    	 
-	         return 0L;
 	     }
+		
+		@Override
+		protected void onPostExecute(Long result) {
+			if (result==0) setOperation("Saved OK");
+			else setOperation("Saved failed");
+			returnToBarcode();
+		}
+
 
 	 }
 	
